@@ -136,7 +136,7 @@ const loadPersistedState = (): InitialAppState => {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch (_storageError) {
-      // Storage can be unavailable in private browsing contexts.
+      // O armazenamento pode não estar disponível em navegação privada.
     }
     return getDefaultAppState();
   }
@@ -146,27 +146,27 @@ const tutorialSteps: TutorialStep[] = [
   {
     title: "Meta-tabuleiro",
     description:
-      "O tabuleiro grande tem 9 mini-tabuleiros. Para vencer a partida, voce precisa conquistar 3 mini-tabuleiros em linha no grid principal.",
+      "O tabuleiro grande tem 9 mini-tabuleiros. Para vencer a partida, você precisa conquistar 3 mini-tabuleiros em linha no tabuleiro principal.",
   },
   {
     title: "Como jogar uma rodada",
     description:
-      "Cada mini-tabuleiro funciona como um jogo da velha normal. Quando voce vence um deles, aquela casa passa a valer para o tabuleiro principal.",
+      "Cada mini-tabuleiro funciona como um jogo da velha normal. Quando você vence um deles, aquela casa passa a valer para o tabuleiro principal.",
   },
   {
     title: "Regra de redirecionamento",
     description:
-      "A casa escolhida dentro do mini-tabuleiro envia o adversario para o mini-tabuleiro correspondente na rodada seguinte.",
+      "A casa escolhida dentro do mini-tabuleiro envia o adversário para o mini-tabuleiro correspondente na rodada seguinte.",
   },
   {
-    title: "Quando o destino esta fechado",
+    title: "Quando o destino está fechado",
     description:
-      "Se o mini-tabuleiro de destino ja estiver vencido ou cheio, o proximo jogador pode agir em qualquer mini-tabuleiro ainda aberto.",
+      "Se o mini-tabuleiro de destino já estiver vencido ou cheio, o próximo jogador pode agir em qualquer mini-tabuleiro ainda aberto.",
   },
   {
     title: "Lendo a interface",
     description:
-      "O topo do tabuleiro mostra turno, alvo atual e empates. O painel flutuante traz placar, controles da rodada e tela cheia.",
+      "O topo do tabuleiro mostra o turno, o alvo atual e os empates. O painel flutuante traz o placar, os controles da rodada e a tela cheia.",
   },
 ];
 
@@ -253,7 +253,7 @@ function App() {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
     } catch (_error) {
-      // The game remains usable when browser storage is disabled or full.
+      // O jogo continua disponível quando o armazenamento do navegador está desativado ou cheio.
     }
   }, [aiDifficulty, draftPlayers, gameMode, humanMark, isPlaying, match, players, scoreboard]);
 
@@ -405,7 +405,7 @@ function App() {
 
       await document.exitFullscreen();
     } catch (_error) {
-      // Fullscreen may be blocked by browser or embedding permissions.
+      // A tela cheia pode ser bloqueada pelo navegador ou pelas permissões de incorporação.
     }
   };
 
@@ -475,7 +475,7 @@ function App() {
 
   const getStatusMessage = (winner: BoardWinner) => {
     if (winner === "draw") {
-      return "Empate total. Ninguem dominou o meta-tabuleiro.";
+      return "Empate total. Ninguém dominou o meta-tabuleiro.";
     }
 
     if (winner) {
@@ -483,10 +483,10 @@ function App() {
     }
 
     if (isAiThinking) {
-      return `${currentPlayerName} esta calculando a proxima jogada no tabuleiro ${activeBoardLabel}.`;
+      return `${currentPlayerName} está calculando a próxima jogada no tabuleiro ${activeBoardLabel}.`;
     }
 
-    return `${currentPlayerName} joga agora. O alvo e o tabuleiro ${activeBoardLabel}.`;
+    return `${currentPlayerName} joga agora. O alvo é o tabuleiro ${activeBoardLabel}.`;
   };
 
   const getResultHeadline = () => {
@@ -517,11 +517,11 @@ function App() {
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
             <div className="hero-copy">
-              <p className="eyebrow">Browser strategy showdown</p>
+              <p className="eyebrow">Duelo estratégico no navegador</p>
               <h1>Tic Tac Toe Supreme</h1>
               <p className="hero-text">
-                Cada jogada decide o proximo campo de batalha. Vença mini-tabuleiros, controle o grid principal e
-                force seu rival para armadilhas taticas.
+                Cada jogada decide o próximo campo de batalha. Vença mini-tabuleiros, controle o tabuleiro principal e
+                force seu rival para armadilhas táticas.
               </p>
 
               <div className="hero-stats" aria-label="Destaques da partida">
@@ -546,7 +546,7 @@ function App() {
                   <p className="eyebrow">Preparar partida</p>
                   <h2>Escolha os jogadores</h2>
                 </div>
-                <span className="start-form-badge">{gameMode === "ai" ? "Solo vs IA" : "Local multiplayer"}</span>
+                <span className="start-form-badge">{gameMode === "ai" ? "Solo contra IA" : "Multijogador local"}</span>
               </div>
 
               <div className="mode-switch" role="group" aria-label="Modo de jogo">
@@ -571,8 +571,8 @@ function App() {
               {gameMode === "ai" && (
                 <div className="solo-options">
                   <div className="solo-copy">
-                    <strong>Voce quer jogar como qual simbolo?</strong>
-                    <span>Quem joga de X comeca a partida.</span>
+                    <strong>Você quer jogar com qual símbolo?</strong>
+                    <span>Quem joga com X começa a partida.</span>
                   </div>
                   <div className="mode-switch" role="group" aria-label="Simbolo do jogador">
                     <button
@@ -594,8 +594,8 @@ function App() {
                   </div>
 
                   <div className="solo-copy">
-                    <strong>Nivel da IA</strong>
-                    <span>Facil joga mais solta, media equilibra, dificil prioriza estrategia.</span>
+                    <strong>Nível da IA</strong>
+                    <span>Fácil joga de forma mais livre, média equilibra e difícil prioriza a estratégia.</span>
                   </div>
                   <div className="mode-switch mode-switch-triple" role="group" aria-label="Dificuldade da IA">
                     <button
@@ -604,7 +604,7 @@ function App() {
                       onClick={() => setAiDifficulty("easy")}
                       aria-pressed={aiDifficulty === "easy"}
                     >
-                      Facil
+                      Fácil
                     </button>
                     <button
                       type="button"
@@ -612,7 +612,7 @@ function App() {
                       onClick={() => setAiDifficulty("medium")}
                       aria-pressed={aiDifficulty === "medium"}
                     >
-                      Media
+                      Média
                     </button>
                     <button
                       type="button"
@@ -620,7 +620,7 @@ function App() {
                       onClick={() => setAiDifficulty("hard")}
                       aria-pressed={aiDifficulty === "hard"}
                     >
-                      Dificil
+                      Difícil
                     </button>
                   </div>
                 </div>
@@ -660,12 +660,12 @@ function App() {
 
               <div className="rules-card">
                 <h2>Regra principal</h2>
-                <p>Onde voce joga agora define em qual mini-tabuleiro o adversario vai jogar depois.</p>
+                <p>Onde você joga agora define em qual mini-tabuleiro o adversário vai jogar depois.</p>
               </div>
 
               <div className="start-actions">
                 <button className="primary-button" type="submit">
-                  Comecar partida
+                  Começar partida
                 </button>
                 <button className="ghost-button" type="button" onClick={(event) => openTutorial(0, event.currentTarget)}>
                   Ver tutorial
@@ -883,13 +883,13 @@ function App() {
               <p className="tutorial-text">{currentTutorialStep.description}</p>
 
               <div className="tutorial-example">
-                <strong>Dica rapida</strong>
+                  <strong>Dica rápida</strong>
                 <span>
                   {tutorialStepIndex < 2
-                    ? "Pense primeiro em qual mini-tabuleiro voce quer controlar no tabuleiro principal."
+                    ? "Pense primeiro em qual mini-tabuleiro você quer controlar no tabuleiro principal."
                     : tutorialStepIndex < 4
-                      ? "Nem sempre a melhor jogada e a que vence localmente; as vezes ela prepara o proximo alvo do rival."
-                      : "Use o painel apenas como apoio. O foco principal da leitura deve ficar no tabuleiro central."}
+                      ? "Nem sempre a melhor jogada é a que vence localmente; às vezes, ela prepara o próximo alvo do rival."
+                      : "Use o painel apenas como apoio. O foco principal deve permanecer no tabuleiro central."}
                 </span>
               </div>
 
@@ -908,7 +908,7 @@ function App() {
                   </button>
                 ) : (
                   <button className="primary-button" type="button" onClick={handleNextTutorialStep}>
-                    Proximo
+                    Próximo
                   </button>
                 )}
               </div>

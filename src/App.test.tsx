@@ -16,7 +16,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "Tic Tac Toe Supreme" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Comecar partida" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Começar partida" })).toBeInTheDocument();
   });
 
   it("keeps focus within the tutorial and restores it on close", async () => {
