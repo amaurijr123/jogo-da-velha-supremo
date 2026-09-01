@@ -11,6 +11,7 @@ import {
   getMacroWinningLine,
   getPlayableBoards,
   getSmallBoardWinningLine,
+  isValidMatchState,
   makeMove,
 } from "./game";
 import "./index.css";
@@ -62,6 +63,24 @@ const initialScoreboard: Scoreboard = {
 
 const STORAGE_KEY = "tic-tac-toe-supreme-state";
 
+const isPlayerMark = (value: unknown): value is PlayerMark => value === "X" || value === "O";
+
+const isPlayers = (value: unknown): value is Players =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  typeof (value as Players).X === "string" &&
+  typeof (value as Players).O === "string" &&
+  (value as Players).X.length <= 24 &&
+  (value as Players).O.length <= 24;
+
+const isScoreboard = (value: unknown): value is Scoreboard =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  ["X", "O", "draws"].every((key) => {
+    const score = (value as Scoreboard)[key as keyof Scoreboard];
+    return Number.isSafeInteger(score) && score >= 0;
+  });
+
 const getDefaultAppState = (): InitialAppState => ({
   players: defaultPlayers,
   draftPlayers: defaultPlayers,
@@ -85,21 +104,40 @@ const loadPersistedState = (): InitialAppState => {
       return getDefaultAppState();
     }
 
-    const parsedState = JSON.parse(savedState) as Partial<PersistedState>;
+    const parsedState = JSON.parse(savedState) as unknown;
     const defaults = getDefaultAppState();
 
+    if (!parsedState || typeof parsedState !== "object") {
+      return defaults;
+    }
+
+    const persistedState = parsedState as Partial<PersistedState>;
+
     return {
-      players: parsedState.players ?? defaults.players,
-      draftPlayers: parsedState.draftPlayers ?? parsedState.players ?? defaults.draftPlayers,
-      match: parsedState.match ?? defaults.match,
-      scoreboard: parsedState.scoreboard ?? defaults.scoreboard,
-      isPlaying: parsedState.isPlaying ?? defaults.isPlaying,
-      gameMode: parsedState.gameMode ?? defaults.gameMode,
-      humanMark: parsedState.humanMark ?? defaults.humanMark,
-      aiDifficulty: parsedState.aiDifficulty ?? defaults.aiDifficulty,
+      players: isPlayers(persistedState.players) ? persistedState.players : defaults.players,
+      draftPlayers: isPlayers(persistedState.draftPlayers)
+        ? persistedState.draftPlayers
+        : isPlayers(persistedState.players)
+          ? persistedState.players
+          : defaults.draftPlayers,
+      match: isValidMatchState(persistedState.match) ? persistedState.match : defaults.match,
+      scoreboard: isScoreboard(persistedState.scoreboard) ? persistedState.scoreboard : defaults.scoreboard,
+      isPlaying: typeof persistedState.isPlaying === "boolean" ? persistedState.isPlaying : defaults.isPlaying,
+      gameMode: persistedState.gameMode === "pvp" || persistedState.gameMode === "ai" ? persistedState.gameMode : defaults.gameMode,
+      humanMark: isPlayerMark(persistedState.humanMark) ? persistedState.humanMark : defaults.humanMark,
+      aiDifficulty:
+        persistedState.aiDifficulty === "easy" ||
+        persistedState.aiDifficulty === "medium" ||
+        persistedState.aiDifficulty === "hard"
+          ? persistedState.aiDifficulty
+          : defaults.aiDifficulty,
     };
   } catch (_error) {
-    window.localStorage.removeItem(STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch (_storageError) {
+      // Storage can be unavailable in private browsing contexts.
+    }
     return getDefaultAppState();
   }
 };
@@ -156,6 +194,8 @@ function App() {
     initialStateRef.current.match.boards.map((board) => board.winner)
   );
   const hasHydratedRef = useRef(false);
+  const tutorialModalRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const playableBoards = useMemo(
     () => getPlayableBoards(match.boards, match.activeBoardIndex),
@@ -210,7 +250,11 @@ function App() {
       aiDifficulty,
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist));
+    } catch (_error) {
+      // The game remains usable when browser storage is disabled or full.
+    }
   }, [aiDifficulty, draftPlayers, gameMode, humanMark, isPlaying, match, players, scoreboard]);
 
   useEffect(() => {
@@ -249,7 +293,7 @@ function App() {
     }
 
     if (match.moveCount > previousMoveCountRef.current) {
-      const lastPlayer = match.currentPlayer === "X" ? "O" : "X";
+      const lastPlayer = match.winner ? match.currentPlayer : match.currentPlayer === "X" ? "O" : "X";
       playMoveSound(lastPlayer);
       previousMoveCountRef.current = match.moveCount;
     }
@@ -353,15 +397,20 @@ function App() {
   };
 
   const handleFullscreenToggle = async () => {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-      return;
-    }
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        return;
+      }
 
-    await document.exitFullscreen();
+      await document.exitFullscreen();
+    } catch (_error) {
+      // Fullscreen may be blocked by browser or embedding permissions.
+    }
   };
 
-  const openTutorial = (stepIndex = 0) => {
+  const openTutorial = (stepIndex = 0, trigger?: HTMLElement) => {
+    previousFocusRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setTutorialStepIndex(stepIndex);
     setIsTutorialOpen(true);
   };
@@ -377,6 +426,52 @@ function App() {
   const handlePreviousTutorialStep = () => {
     setTutorialStepIndex((current) => Math.max(current - 1, 0));
   };
+
+  useEffect(() => {
+    if (!isTutorialOpen) {
+      previousFocusRef.current?.focus();
+      return;
+    }
+
+    const modal = tutorialModalRef.current;
+
+    if (!modal) {
+      return;
+    }
+
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+    const focusableElements = () => Array.from(modal.querySelectorAll<HTMLElement>(focusableSelector));
+    focusableElements()[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeTutorial();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const elements = focusableElements();
+      const firstElement = elements[0];
+      const lastElement = elements[elements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isTutorialOpen]);
 
   const getStatusMessage = (winner: BoardWinner) => {
     if (winner === "draw") {
@@ -454,11 +549,12 @@ function App() {
                 <span className="start-form-badge">{gameMode === "ai" ? "Solo vs IA" : "Local multiplayer"}</span>
               </div>
 
-              <div className="mode-switch" role="tablist" aria-label="Modo de jogo">
+              <div className="mode-switch" role="group" aria-label="Modo de jogo">
                 <button
                   type="button"
                   className={`mode-chip ${gameMode === "pvp" ? "mode-chip-active" : ""}`}
                   onClick={() => setGameMode("pvp")}
+                  aria-pressed={gameMode === "pvp"}
                 >
                   2 jogadores
                 </button>
@@ -466,6 +562,7 @@ function App() {
                   type="button"
                   className={`mode-chip ${gameMode === "ai" ? "mode-chip-active" : ""}`}
                   onClick={() => setGameMode("ai")}
+                  aria-pressed={gameMode === "ai"}
                 >
                   Contra IA
                 </button>
@@ -477,11 +574,12 @@ function App() {
                     <strong>Voce quer jogar como qual simbolo?</strong>
                     <span>Quem joga de X comeca a partida.</span>
                   </div>
-                  <div className="mode-switch">
+                  <div className="mode-switch" role="group" aria-label="Simbolo do jogador">
                     <button
                       type="button"
                       className={`mode-chip ${humanMark === "X" ? "mode-chip-active" : ""}`}
                       onClick={() => setHumanMark("X")}
+                      aria-pressed={humanMark === "X"}
                     >
                       Quero ser X
                     </button>
@@ -489,6 +587,7 @@ function App() {
                       type="button"
                       className={`mode-chip ${humanMark === "O" ? "mode-chip-active" : ""}`}
                       onClick={() => setHumanMark("O")}
+                      aria-pressed={humanMark === "O"}
                     >
                       Quero ser O
                     </button>
@@ -498,11 +597,12 @@ function App() {
                     <strong>Nivel da IA</strong>
                     <span>Facil joga mais solta, media equilibra, dificil prioriza estrategia.</span>
                   </div>
-                  <div className="mode-switch mode-switch-triple">
+                  <div className="mode-switch mode-switch-triple" role="group" aria-label="Dificuldade da IA">
                     <button
                       type="button"
                       className={`mode-chip ${aiDifficulty === "easy" ? "mode-chip-active" : ""}`}
                       onClick={() => setAiDifficulty("easy")}
+                      aria-pressed={aiDifficulty === "easy"}
                     >
                       Facil
                     </button>
@@ -510,6 +610,7 @@ function App() {
                       type="button"
                       className={`mode-chip ${aiDifficulty === "medium" ? "mode-chip-active" : ""}`}
                       onClick={() => setAiDifficulty("medium")}
+                      aria-pressed={aiDifficulty === "medium"}
                     >
                       Media
                     </button>
@@ -517,6 +618,7 @@ function App() {
                       type="button"
                       className={`mode-chip ${aiDifficulty === "hard" ? "mode-chip-active" : ""}`}
                       onClick={() => setAiDifficulty("hard")}
+                      aria-pressed={aiDifficulty === "hard"}
                     >
                       Dificil
                     </button>
@@ -565,7 +667,7 @@ function App() {
                 <button className="primary-button" type="submit">
                   Comecar partida
                 </button>
-                <button className="ghost-button" type="button" onClick={() => openTutorial()}>
+                <button className="ghost-button" type="button" onClick={(event) => openTutorial(0, event.currentTarget)}>
                   Ver tutorial
                 </button>
               </div>
@@ -608,7 +710,7 @@ function App() {
                     <button className="ghost-button" type="button" onClick={() => void handleFullscreenToggle()}>
                       {isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
                     </button>
-                    <button className="ghost-button" type="button" onClick={() => openTutorial()}>
+                    <button className="ghost-button" type="button" onClick={(event) => openTutorial(0, event.currentTarget)}>
                       Tutorial
                     </button>
                   </div>
@@ -645,7 +747,11 @@ function App() {
                   </div>
                 )}
 
-                <div className={`board-topline board-topline-minimal board-topline-player-${match.currentPlayer.toLowerCase()}`}>
+                <div
+                  className={`board-topline board-topline-minimal board-topline-player-${match.currentPlayer.toLowerCase()}`}
+                  role="status"
+                  aria-live="polite"
+                >
                   <div className="board-chip">Turno: {currentPlayerName}</div>
                   <div className="board-chip">Alvo: {activeBoardLabel}</div>
                   {gameMode === "ai" && <div className="board-chip">IA: {aiDifficulty}</div>}
@@ -654,7 +760,7 @@ function App() {
 
                 <div
                   className={`supreme-board supreme-board-player-${match.currentPlayer.toLowerCase()}`}
-                  role="grid"
+                  role="group"
                   aria-label="Tabuleiro supremo"
                 >
                   {match.boards.map((board, boardIndex) => {
@@ -740,7 +846,11 @@ function App() {
             exit={{ opacity: 0 }}
           >
             <motion.section
+              ref={tutorialModalRef}
               className="tutorial-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="tutorial-title"
               initial={{ opacity: 0, y: 20, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -749,7 +859,7 @@ function App() {
               <div className="tutorial-header">
                 <div>
                   <p className="eyebrow">Tutorial guiado</p>
-                  <h2>{currentTutorialStep.title}</h2>
+                  <h2 id="tutorial-title">{currentTutorialStep.title}</h2>
                 </div>
                 <button className="ghost-button tutorial-close" type="button" onClick={closeTutorial}>
                   Fechar

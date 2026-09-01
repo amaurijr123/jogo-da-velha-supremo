@@ -34,7 +34,7 @@ Cada casa do tabuleiro principal abre um novo jogo da velha 3x3. A jogada atual 
 
 ### Requisitos
 
-- Node.js 18+ recomendado
+- Node.js 20.19+ (ou 22.12+) recomendado
 - npm instalado
 
 ### Instalar dependencias
@@ -46,7 +46,7 @@ npm install
 ### Iniciar em desenvolvimento
 
 ```bash
-npm start
+npm run dev
 ```
 
 Abra no navegador:
@@ -71,9 +71,15 @@ npm run build
 
 ## Scripts
 
-- `npm start` - inicia o app em desenvolvimento
-- `npm run build` - gera a build de producao
-- `npm test` - abre o runner de testes do Create React App
+- `npm run dev` - inicia o servidor Vite em desenvolvimento
+- `npm run build` - executa a checagem de tipos e gera a build de producao
+- `npm test` - executa os testes com Vitest
+- `npm run typecheck` - verifica os tipos sem gerar arquivos
+
+## Qualidade
+
+- o estado salvo no `localStorage` e validado antes de restaurar a partida
+- o GitHub Actions executa auditoria de dependencias, build e testes em cada push e pull request
 
 ## Estrutura principal
 
