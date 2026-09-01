@@ -3,4 +3,8 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    // Preserve the existing Vercel output directory from the CRA deployment.
+    outDir: "build",
+  },
 });
